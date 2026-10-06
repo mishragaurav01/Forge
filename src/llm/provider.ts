@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import "dotenv/config";
 import { getTools } from "../tools/registry.js";
+import { getPermission } from "../security/permissions.js";
+import { requestApproval } from "../security/approval.js";
 
 const client = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
@@ -58,12 +60,58 @@ export async function askLLM(message: string) {
 
       const args = JSON.parse(toolCall.function.arguments);
 
-      console.log(`\n🔧 Calling tool: ${toolName}`);
-      console.log("Arguments:", args);
+      const permission = getPermission(toolName);
 
-      const result = await tool.execute(args);
+console.log(`\n🔧 Tool requested: ${toolName}`);
+console.log("Permission:", permission);
+console.log("Arguments:", args);
 
-      console.log("Tool result:", result);
+if (permission === "deny") {
+  const result = `Permission denied for tool: ${toolName}`;
+
+  console.log("❌", result);
+
+  messages.push({
+    role: "tool",
+    tool_call_id: toolCall.id,
+    content: result,
+  });
+
+  continue;
+}
+
+if (permission === "ask") {
+  const approved = await requestApproval(
+    toolName,
+    args
+  );
+
+  if (!approved) {
+    const result = `User denied permission for tool: ${toolName}`;
+
+    console.log("❌", result);
+
+    messages.push({
+      role: "tool",
+      tool_call_id: toolCall.id,
+      content: result,
+    });
+
+    continue;
+  }
+
+  console.log("✅ Permission granted.");
+}
+
+const result = await tool.execute(args);
+
+console.log("Tool result:", result);
+
+messages.push({
+  role: "tool",
+  tool_call_id: toolCall.id,
+  content: result,
+});
 
       // Send tool result back to the LLM
       messages.push({

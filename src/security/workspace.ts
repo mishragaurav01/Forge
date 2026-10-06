@@ -1,22 +1,21 @@
-import path from "path";
+import { isAbsolute, relative, resolve } from "path";
 
-const WORKSPACE_ROOT = path.resolve("workspace");
+export const workspaceRoot = resolve(
+  process.env.FORGE_WORKSPACE ?? "workspace"
+);
 
 export function resolveWorkspacePath(inputPath: string): string {
-  const resolvedPath = path.resolve(WORKSPACE_ROOT, inputPath);
+  const resolved = isAbsolute(inputPath)
+    ? resolve(inputPath)
+    : resolve(workspaceRoot, inputPath);
 
-  const relativePath = path.relative(
-    WORKSPACE_ROOT,
-    resolvedPath
-  );
+  const rel = relative(workspaceRoot, resolved);
 
-  // Prevent paths from escaping workspace
-  if (
-    relativePath.startsWith("..") ||
-    path.isAbsolute(relativePath)
-  ) {
-    throw new Error("Access denied: path is outside workspace.");
+  if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(
+      `Access denied: path escapes the workspace root (${workspaceRoot}).`
+    );
   }
 
-  return resolvedPath;
+  return resolved;
 }

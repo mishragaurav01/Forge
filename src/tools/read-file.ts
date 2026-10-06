@@ -1,22 +1,11 @@
 import { readFile, stat } from "fs/promises";
-import { isAbsolute, relative, resolve } from "path";
 import { registerTool } from "./registry.js";
+import {
+  resolveWorkspacePath,
+  workspaceRoot,
+} from "../security/workspace.js";
 
 const MAX_BYTES = 256 * 1024;
-
-// Forge's workspace.
-// You can override it with FORGE_WORKSPACE in .env.
-const workspaceRoot = resolve(
-  process.env.FORGE_WORKSPACE ?? resolve("workspace")
-);
-
-function isInsideRoot(candidate: string): boolean {
-  const rel = relative(workspaceRoot, candidate);
-
-  // Empty relative path means the workspace root itself.
-  // A file must be inside the workspace, not the root directory itself.
-  return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
-}
 
 registerTool({
   name: "read_file",
@@ -31,7 +20,7 @@ registerTool({
       path: {
         type: "string",
         description:
-          "Path of the file to read, absolute or relative to the workspace root.",
+          "Path relative to the workspace root. Do not include 'workspace/' in the path.",
       },
     },
 
@@ -45,43 +34,42 @@ registerTool({
       return "Invalid file path.";
     }
 
-    // Resolve both absolute and relative paths.
-    const resolved = isAbsolute(rawPath)
-      ? resolve(rawPath)
-      : resolve(workspaceRoot, rawPath);
-
-    // Security boundary.
-    if (!isInsideRoot(resolved)) {
-      return `Access denied: path escapes the workspace root (${workspaceRoot}).`;
-    }
-
     try {
+      const resolved = resolveWorkspacePath(rawPath);
+
       const stats = await stat(resolved);
 
       if (stats.isDirectory()) {
         return `Not a file: ${resolved} is a directory.`;
       }
 
-      // Prevent extremely large files from consuming the context window.
       if (stats.size > MAX_BYTES) {
         return `File too large (${stats.size} bytes, limit ${MAX_BYTES} bytes).`;
       }
 
       return await readFile(resolved, "utf-8");
     } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : String(error);
+
+      if (message.startsWith("Access denied")) {
+        return message;
+      }
+
       const code = (error as NodeJS.ErrnoException).code;
 
       if (code === "ENOENT") {
-        return `File not found: ${resolved}`;
+        return `File not found inside workspace.`;
       }
 
       if (code === "EACCES" || code === "EPERM") {
-        return `Permission denied: ${resolved}`;
+        return `Permission denied.`;
       }
 
-      return `Failed to read file: ${String(error)}`;
+      return `Failed to read file: ${message}`;
     }
   },
 });
 
-export { workspaceRoot, MAX_BYTES, isInsideRoot };
+export { MAX_BYTES, workspaceRoot };
