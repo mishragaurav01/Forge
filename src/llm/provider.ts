@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import "dotenv/config";
+import { Session } from "../session.js";
 
 import { getTools } from "../tools/registry.js";
 import { getPermission } from "../security/permissions.js";
@@ -13,7 +14,10 @@ const client = new OpenAI({
 const MODEL = "openrouter/free";
 const MAX_TOOL_ROUNDS = 10;
 
-export async function askLLM(message: string) {
+export async function askLLM(
+  message: string,
+  session: Session
+) {
   const tools = getTools();
 
   const toolDefinitions = tools.map((tool) => ({
@@ -25,12 +29,12 @@ export async function askLLM(message: string) {
     },
   }));
 
-  const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-    {
-      role: "user",
-      content: message,
-    },
-  ];
+  session.addMessage({
+  role: "user",
+  content: message,
+});
+
+const messages = session.getMessages();
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     console.log(`\n🤖 Agent round ${round + 1}`);

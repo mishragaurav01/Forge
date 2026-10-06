@@ -1,6 +1,7 @@
 import readline from "readline";
 
 import { askLLM } from "./llm/provider.js";
+import { Session } from "./session.js";
 
 import "./tools/calculator.js";
 import "./tools/read-file.js";
@@ -24,6 +25,8 @@ async function main() {
   console.log("🔥 Forge");
   console.log("Type 'exit' to quit.\n");
 
+  const session = new Session();
+
   while (true) {
     const input = await askQuestion("Forge> ");
 
@@ -39,7 +42,7 @@ async function main() {
     }
 
     try {
-      const answer = await askLLM(message);
+      const answer = await askLLM(message, session);
 
       console.log("\nForge:");
       console.log(answer);
