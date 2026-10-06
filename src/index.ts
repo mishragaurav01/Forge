@@ -7,7 +7,7 @@ import "./tools/search-files.js";
 
 async function main() {
   const answer = await askLLM(
-    "Search the src directory for the word 'registerTool' and tell me which files contain it."
+    "Read ../package.json and tell me what is inside."
   );
 
   console.log("\nForge:");

@@ -4,10 +4,17 @@ import { registerTool } from "./registry.js";
 
 const MAX_BYTES = 256 * 1024;
 
-const workspaceRoot = resolve(process.env.FORGE_WORKSPACE ?? process.cwd());
+// Forge's workspace.
+// You can override it with FORGE_WORKSPACE in .env.
+const workspaceRoot = resolve(
+  process.env.FORGE_WORKSPACE ?? resolve("workspace")
+);
 
 function isInsideRoot(candidate: string): boolean {
   const rel = relative(workspaceRoot, candidate);
+
+  // Empty relative path means the workspace root itself.
+  // A file must be inside the workspace, not the root directory itself.
   return rel !== "" && !rel.startsWith("..") && !isAbsolute(rel);
 }
 
@@ -38,10 +45,12 @@ registerTool({
       return "Invalid file path.";
     }
 
+    // Resolve both absolute and relative paths.
     const resolved = isAbsolute(rawPath)
       ? resolve(rawPath)
       : resolve(workspaceRoot, rawPath);
 
+    // Security boundary.
     if (!isInsideRoot(resolved)) {
       return `Access denied: path escapes the workspace root (${workspaceRoot}).`;
     }
@@ -53,6 +62,7 @@ registerTool({
         return `Not a file: ${resolved} is a directory.`;
       }
 
+      // Prevent extremely large files from consuming the context window.
       if (stats.size > MAX_BYTES) {
         return `File too large (${stats.size} bytes, limit ${MAX_BYTES} bytes).`;
       }
