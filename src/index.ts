@@ -9,8 +9,9 @@ import "./tools/list-directory.js";
 import "./tools/search-files.js";
 import "./tools/write-files.js";
 import "./tools/run-command.js";
-import { MCPClient } from "./mcp/client.js";
+import { MCPManager } from "./mcp/manager.js";
 import { setApprovalInterface } from "./security/approval.js";
+
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -27,10 +28,9 @@ function askQuestion(question: string): Promise<string> {
 
 async function main() {
 
-  const mcp = new MCPClient();
+const mcp = new MCPManager();
 
-await mcp.initialize();
-await mcp.registerTools();
+await mcp.addServer();
 
   console.log("🔥 Forge");
   console.log("Type 'exit' to quit.\n");
@@ -64,7 +64,7 @@ await mcp.registerTools();
       );
     }
   }
-  mcp.close();
+  mcp.closeAll();
   rl.close();
 }
 
