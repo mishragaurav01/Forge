@@ -9,11 +9,15 @@ import "./tools/list-directory.js";
 import "./tools/search-files.js";
 import "./tools/write-files.js";
 import "./tools/run-command.js";
+import { MCPClient } from "./mcp/client.js";
+import { setApprovalInterface } from "./security/approval.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
+
+setApprovalInterface(rl);
 
 function askQuestion(question: string): Promise<string> {
   return new Promise((resolve) => {
@@ -22,6 +26,12 @@ function askQuestion(question: string): Promise<string> {
 }
 
 async function main() {
+
+  const mcp = new MCPClient();
+
+await mcp.initialize();
+await mcp.registerTools();
+
   console.log("🔥 Forge");
   console.log("Type 'exit' to quit.\n");
 
@@ -54,7 +64,7 @@ async function main() {
       );
     }
   }
-
+  mcp.close();
   rl.close();
 }
 

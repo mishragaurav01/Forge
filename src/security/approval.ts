@@ -1,16 +1,23 @@
 import readline from "readline";
 
+let rl: readline.Interface | null = null;
+
+export function setApprovalInterface(
+  interfaceInstance: readline.Interface
+) {
+  rl = interfaceInstance;
+}
+
 export async function requestApproval(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<boolean> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  if (!rl) {
+    throw new Error("Approval interface has not been initialized.");
+  }
 
   const answer = await new Promise<string>((resolve) => {
-    rl.question(
+    rl!.question(
       `\n⚠️ Permission required\n\nTool: ${toolName}\nArguments: ${JSON.stringify(
         args,
         null,
@@ -19,8 +26,6 @@ export async function requestApproval(
       resolve
     );
   });
-
-  rl.close();
 
   return answer.trim().toLowerCase() === "y";
 }
